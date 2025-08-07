@@ -1,0 +1,14 @@
+[images]
+  remote_images = ["https://source.unsplash.com/.*", "https://images.unsplash.com/.*", "https://ext.same-assets.com/.*", "https://ugc.same-assets.com/.*"]
+
+[build]
+  command = "echo 'Starting clean build at' $(date) && rm -rf .next && rm -rf node_modules/.cache && rm -rf .turbo && rm -rf prisma/*.db* && bunx prisma generate && bunx prisma db push && bunx prisma db seed && FORCE_REBUILD=$(date +%s) bun run build"
+  publish = ".next"
+
+[build.environment]
+  NETLIFY_SKIP_CACHE = "true"
+  NODE_ENV = "production"
+  NETLIFY_USE_CACHE = "false"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

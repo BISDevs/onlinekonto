@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid()) // Changed to String with CUID for alphanumeric IDs
+  name        String
+  email       String   @unique
+  password    String
+  role        Role     @default(USER)
+
+  // Banking Information
+  accountNumber String   @unique @map("account_number") // Alphanumeric account number
+  kycStatus     KycStatus @default(PENDING) @map("kyc_status")
+
+  // Address Information
+  street      String?
+  postalCode  String?  @map("postal_code")
+  city        String?
+  country     String?  @default("Deutschland")
+
+  // Reference Account for transfers
+  referenceIban String? @map("reference_iban")
+  referenceBic  String? @map("reference_bic")
+  referenceBankName String? @map("reference_bank_name")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  anlagen      FestgeldAnlage[]
+  transaktionen Transaktion[]
+
+  @@map("users")
+}
+
+model FestgeldAnlage {
+  id              Int      @id @default(autoincrement())
+  userId          String   @map("user_id") // Changed to String to match User.id
+  betrag          Float
+  zinssatz        Float
+  laufzeitMonate  Int      @map("laufzeit_monate")
+  startDatum      DateTime @map("start_datum")
+  endDatum        DateTime @map("end_datum")
+  zinsbetrag      Float
+  endbetrag       Float
+  status          AnlageStatus @default(AKTIV)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaktionen Transaktion[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("festgeld_anlagen")
+}
+
+model Transaktion {
+  id          Int      @id @default(autoincrement())
+  anlageId    Int?     @map("anlage_id")
+  userId      String   @map("user_id") // Changed to String to match User.id
+  typ         TransaktionTyp
+  betrag      Float
+  datum       DateTime @default(now())
+  beschreibung String?
+
+  // Relations
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anlage FestgeldAnlage? @relation(fields: [anlageId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([anlageId])
+  @@index([typ])
+  @@index([datum])
+  @@map("transaktionen")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+
+  @@map("role")
+}
+
+enum AnlageStatus {
+  AKTIV                @map("aktiv")
+  BEENDET             @map("beendet")
+  VORZEITIG_BEENDET   @map("vorzeitig_beendet")
+
+  @@map("anlage_status")
+}
+
+enum TransaktionTyp {
+  EINZAHLUNG      @map("einzahlung")
+  AUSZAHLUNG      @map("auszahlung")
+  ZINSGUTSCHRIFT  @map("zinsgutschrift")
+
+  @@map("transaktion_typ")
+}
+
+enum KycStatus {
+  PENDING     @map("pending")
+  VERIFIED    @map("verified")
+  REJECTED    @map("rejected")
+  INCOMPLETE  @map("incomplete")
+
+  @@map("kyc_status")
+}
